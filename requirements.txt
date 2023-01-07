@@ -6,3 +6,4 @@ optax>=0.0.8
 seqeval
 transformers
 evaluate
+nltk

@@ -507,13 +507,14 @@ def main():
         desc="Running tokenizer on dataset",
     )
 
-    if training_args.do_train:
-        if "train" not in processed_raw_datasets:
-            raise ValueError("--do_train requires a train dataset")
-        train_dataset = processed_raw_datasets["train"]
-        if data_args.max_train_samples is not None:
-            train_dataset = train_dataset.select(range(data_args.max_train_samples))
-    
+    # if training_args.do_train:
+    #     if "train" not in processed_raw_datasets:
+    #         raise ValueError("--do_train requires a train dataset")
+    #     train_dataset = processed_raw_datasets["train"]
+    #     if data_args.max_train_samples is not None:
+    #         train_dataset = train_dataset.select(range(data_args.max_train_samples))
+    train_dataset = processed_raw_datasets["train"]
+
     if training_args.do_eval:
         if "validation" not in processed_raw_datasets:
             raise ValueError("--do_eval requires a validation dataset")
@@ -528,9 +529,9 @@ def main():
         if data_args.max_predict_samples is not None:
             predict_dataset = predict_dataset.select(range(data_args.max_predict_samples))
 
-    # Log a few random samples from the training set:
-    for index in random.sample(range(len(train_dataset)), 3):
-        logger.info(f"Sample {index} of the training set: {train_dataset[index]}.")
+    # # Log a few random samples from the training set:
+    # for index in random.sample(range(len(train_dataset)), 3):
+    #     logger.info(f"Sample {index} of the training set: {train_dataset[index]}.")
 
     # Define a summary writer
     has_tensorboard = is_tensorboard_available()
@@ -571,14 +572,23 @@ def main():
     train_batch_size = training_args.per_device_train_batch_size * jax.local_device_count()
     per_device_eval_batch_size = int(training_args.per_device_eval_batch_size)
     eval_batch_size = training_args.per_device_eval_batch_size * jax.local_device_count()
+    
+    length_ds = None
+    if training_args.do_train:
+        length_ds = len(train_dataset)
+    elif training_args.do_eval:
+        length_ds = len(eval_dataset)
+    else:
+        length_ds = predict_dataset
+
 
     learning_rate_fn = create_learning_rate_fn(
-        len(train_dataset),
-        train_batch_size,
-        training_args.num_train_epochs,
-        training_args.warmup_steps,
-        training_args.learning_rate,
-    )
+          length_ds,
+          train_batch_size,
+          training_args.num_train_epochs,
+          training_args.warmup_steps,
+          training_args.learning_rate,
+      )
 
     state = create_train_state(model, learning_rate_fn, num_labels=num_labels, training_args=training_args)
 
@@ -645,13 +655,13 @@ def main():
                 "f1": results["overall_f1"],
                 "accuracy": results["overall_accuracy"],
             }
+
+    # make sure weights are replicated on each device
+    state = replicate(state)
     
     if training_args.do_train:
         logger.info(f"===== Starting training ({num_epochs} epochs) =====")
         train_time = 0
-
-        # make sure weights are replicated on each device
-        state = replicate(state)
 
         train_time = 0
         step_per_epoch = len(train_dataset) // train_batch_size
@@ -753,6 +763,7 @@ def main():
             metric.add_batch(predictions=preds, references=refs)
 
         eval_metrics = compute_metrics()
+        print(eval_metrics)
 
         if jax.process_index() == 0:
             eval_metrics = {f"eval_{metric_name}": value for metric_name, value in eval_metrics.items()}
@@ -762,7 +773,6 @@ def main():
     
     if training_args.do_predict:
         logger.info("*** Predict ***")
-        
 
         eval_metrics = {}
         eval_loader = eval_data_collator(eval_dataset, eval_batch_size)
@@ -775,6 +785,7 @@ def main():
             metric.add_batch(predictions=preds, references=refs)
 
         eval_metrics = compute_metrics()
+        print(eval_metrics)
 
 
 if __name__ == "__main__":
