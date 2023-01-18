@@ -1,4 +1,3 @@
-%%writefile run.py
 #!/usr/bin/env python
 # coding=utf-8
 # Copyright 2020 The HuggingFace Team All rights reserved.
