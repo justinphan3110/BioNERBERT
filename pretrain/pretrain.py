@@ -498,10 +498,11 @@ def main():
           "special_tokens_mask": [],
           "entity_tokens_mask": []
         }
-        for example in examples:
+        for tokens, ner_tags in zip(examples['tokens'], examples['ner_tags']):
+          example = {'tokens': tokens, 'ner_tags': ner_tags}
           tokens = []
           entity_tokens_mask = []
-          for i, word in enumerate(example['tokens']):
+          for i, word in enumerate(example):
               token = tokenizer.tokenize(word)
               tokens.extend(token)
               if i >= len(example['ner_tags']):
@@ -554,7 +555,6 @@ def main():
           features["special_tokens_mask"].append(special_tokens_mask)
           features["entity_tokens_mask"].append(entity_tokens_mask)
         return features
-
     with training_args.main_process_first(desc="dataset map tokenization"):
         tokenized_datasets = raw_datasets.map(
             convert_examples_to_features,
