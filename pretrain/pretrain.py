@@ -502,7 +502,7 @@ def main():
           example = {'tokens': tokens, 'ner_tags': ner_tags}
           tokens = []
           entity_tokens_mask = []
-          for i, word in enumerate(example):
+          for i, word in enumerate(example['tokens']):
               token = tokenizer.tokenize(word)
               tokens.extend(token)
               if i >= len(example['ner_tags']):
