@@ -177,10 +177,6 @@ class ModelArguments:
         default=True,
         metadata={"help": "Whether to use one of the fast tokenizer (backed by the tokenizers library) or not."},
     )
-    model_revision: str = field(
-        default="main",
-        metadata={"help": "The specific model version to use (can be a branch name, tag name or commit id)."},
-    )
     use_auth_token: bool = field(
         default=False,
         metadata={
@@ -203,13 +199,6 @@ class DataTrainingArguments:
     """
     Arguments pertaining to what data we are going to input our model for training and eval.
     """
-
-    dataset_name: Optional[str] = field(
-        default=None, metadata={"help": "The name of the dataset to use (via the datasets library)."}
-    )
-    dataset_config_name: Optional[str] = field(
-        default=None, metadata={"help": "The configuration name of the dataset to use (via the datasets library)."}
-    )
     train_file: Optional[str] = field(default=None, metadata={"help": "The input training data file (a text file)."})
     validation_file: Optional[str] = field(
         default=None,
@@ -219,7 +208,7 @@ class DataTrainingArguments:
         default=False, metadata={"help": "Overwrite the cached training and evaluation sets"}
     )
     validation_split_percentage: Optional[int] = field(
-        default=5,
+        default=1,
         metadata={
             "help": "The percentage of the train set used as validation set in case there's no validation split"
         },
@@ -269,7 +258,7 @@ class DataTrainingArguments:
     )
 
     def __post_init__(self):
-        if self.dataset_name is None and self.train_file is None and self.validation_file is None:
+        if self.train_file is None and self.validation_file is None:
             raise ValueError("Need either a dataset name or a training/validation file.")
         else:
             if self.train_file is not None:
@@ -348,62 +337,38 @@ def main():
     #
     # In distributed training, the load_dataset function guarantee that only one local process can concurrently
     # download the dataset.
-    if data_args.dataset_name is not None:
-        # Downloading and loading a dataset from the hub.
-        raw_datasets = load_dataset(
-            data_args.dataset_name,
-            data_args.dataset_config_name,
-            cache_dir=model_args.cache_dir,
-            use_auth_token=True if model_args.use_auth_token else None,
-        )
-        if "validation" not in raw_datasets.keys():
-            raw_datasets["validation"] = load_dataset(
-                data_args.dataset_name,
-                data_args.dataset_config_name,
-                split=f"train[:{data_args.validation_split_percentage}%]",
-                cache_dir=model_args.cache_dir,
-                use_auth_token=True if model_args.use_auth_token else None,
-            )
-            raw_datasets["train"] = load_dataset(
-                data_args.dataset_name,
-                data_args.dataset_config_name,
-                split=f"train[{data_args.validation_split_percentage}%:]",
-                cache_dir=model_args.cache_dir,
-                use_auth_token=True if model_args.use_auth_token else None,
-            )
-    else:
-        data_files = {}
-        if data_args.train_file is not None:
-            data_files["train"] = data_args.train_file
-            extension = data_args.train_file.split(".")[-1]
-        if data_args.validation_file is not None:
-            data_files["validation"] = data_args.validation_file
-            extension = data_args.validation_file.split(".")[-1]
-        if extension == "txt":
-            extension = "text"
-        raw_datasets = load_dataset(
+    data_files = {}
+    if data_args.train_file is not None:
+        data_files["train"] = data_args.train_file
+        extension = data_args.train_file.split(".")[-1]
+    if data_args.validation_file is not None:
+        data_files["validation"] = data_args.validation_file
+        extension = data_args.validation_file.split(".")[-1]
+    if extension == "txt":
+        extension = "text"
+    raw_datasets = load_dataset(
+        extension,
+        data_files=data_files,
+        cache_dir=model_args.cache_dir,
+        use_auth_token=True if model_args.use_auth_token else None,
+    )
+
+    # If no validation data is there, validation_split_percentage will be used to divide the dataset.
+    if "validation" not in raw_datasets.keys():
+        raw_datasets["validation"] = load_dataset(
             extension,
             data_files=data_files,
+            split=f"train[:{data_args.validation_split_percentage}%]",
             cache_dir=model_args.cache_dir,
             use_auth_token=True if model_args.use_auth_token else None,
         )
-
-        # If no validation data is there, validation_split_percentage will be used to divide the dataset.
-        if "validation" not in raw_datasets.keys():
-            raw_datasets["validation"] = load_dataset(
-                extension,
-                data_files=data_files,
-                split=f"train[:{data_args.validation_split_percentage}%]",
-                cache_dir=model_args.cache_dir,
-                use_auth_token=True if model_args.use_auth_token else None,
-            )
-            raw_datasets["train"] = load_dataset(
-                extension,
-                data_files=data_files,
-                split=f"train[{data_args.validation_split_percentage}%:]",
-                cache_dir=model_args.cache_dir,
-                use_auth_token=True if model_args.use_auth_token else None,
-            )
+        raw_datasets["train"] = load_dataset(
+            extension,
+            data_files=data_files,
+            split=f"train[{data_args.validation_split_percentage}%:]",
+            cache_dir=model_args.cache_dir,
+            use_auth_token=True if model_args.use_auth_token else None,
+        )
 
     # See more about loading any type of standard or custom dataset (from files, python dict, pandas DataFrame, etc) at
     # https://huggingface.co/docs/datasets/loading_datasets.html.
@@ -415,7 +380,6 @@ def main():
     # download model & vocab.
     config_kwargs = {
         "cache_dir": model_args.cache_dir,
-        "revision": model_args.model_revision,
         "use_auth_token": True if model_args.use_auth_token else None,
     }
     if model_args.config_name:
@@ -433,7 +397,6 @@ def main():
     tokenizer_kwargs = {
         "cache_dir": model_args.cache_dir,
         "use_fast": model_args.use_fast_tokenizer,
-        "revision": model_args.model_revision,
         "use_auth_token": True if model_args.use_auth_token else None,
     }
     if model_args.tokenizer_name:
@@ -452,7 +415,6 @@ def main():
             from_tf=bool(".ckpt" in model_args.model_name_or_path),
             config=config,
             cache_dir=model_args.cache_dir,
-            revision=model_args.model_revision,
             use_auth_token=True if model_args.use_auth_token else None,
         )
     else:
@@ -464,13 +426,6 @@ def main():
     embedding_size = model.get_input_embeddings().weight.shape[0]
     if len(tokenizer) > embedding_size:
         model.resize_token_embeddings(len(tokenizer))
-
-    # Preprocessing the datasets.
-    # First we tokenize all the texts.
-    if training_args.do_train:
-        column_names = raw_datasets["train"].column_names
-    else:
-        column_names = raw_datasets["validation"].column_names
 
     if data_args.max_seq_length is None:
         max_seq_length = tokenizer.model_max_length
