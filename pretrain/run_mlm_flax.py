@@ -46,6 +46,9 @@ from flax.training import train_state
 from flax.training.common_utils import get_metrics, onehot, shard
 from huggingface_hub import Repository, create_repo
 from tqdm import tqdm
+import wandb
+
+
 
 from transformers import (
     CONFIG_MAPPING,
@@ -166,6 +169,8 @@ class DataTrainingArguments:
         default=False,
         metadata={"help": "Whether distinct lines of text in the dataset are to be handled as distinct sequences."},
     )
+
+    wandb_project: Optional[str] = field(default=None, metadata={"help": "Wandb Project"})
 
     def __post_init__(self):
         if self.train_file is None and self.validation_file is None:
@@ -302,6 +307,22 @@ def main():
     # Sending telemetry. Tracking the example usage helps us better allocate resources to maintain them. The
     # information sent is the one passed as arguments along with your Python/PyTorch versions.
     send_example_telemetry("run_mlm", model_args, data_args, framework="flax")
+
+
+    log_to_wandb = False
+    if data_args.wandb_project:
+        log_to_wandb = True
+        wandb.init(
+            # set the wandb project where this run will be logged
+            project=data_args.wandb_project,
+            
+            # track hyperparameters and run metadata
+            config={
+                "architecture": model_args.model_name_or_path,
+                "train_file": data_args.train_file,
+                "epochs": training_args.num_train_epochs,
+            }
+        )
 
     if (
         os.path.exists(training_args.output_dir)
@@ -748,6 +769,9 @@ def main():
                     f" {train_metric['learning_rate']})"
                 )
 
+                if log_to_wandb:
+                    wandb.log({"step": cur_step, "train_loss": train_metric['loss'], "learning_rate": train_metric['learning_rate']})
+
                 train_metrics = []
 
             if cur_step % training_args.eval_steps == 0 and cur_step > 0:
@@ -780,6 +804,9 @@ def main():
                 # Save metrics
                 if has_tensorboard and jax.process_index() == 0:
                     write_eval_metric(summary_writer, eval_metrics, cur_step)
+
+                if log_to_wandb:
+                    wandb.log({"step": cur_step, "eval_loss": eval_metrics['loss'], "Acc": eval_metrics['accuracy']})
 
             if cur_step % training_args.save_steps == 0 and cur_step > 0:
                 # save checkpoint after each epoch and push checkpoint to the hub
