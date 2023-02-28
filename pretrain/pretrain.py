@@ -491,20 +491,6 @@ def main():
           input_ids = tokenizer.convert_tokens_to_ids(ntokens)
           attention_mask = [1] * len(input_ids)
           token_type_ids = [0] * len(input_ids)
-
-        #   while len(input_ids) < max_seq_length:
-        #       input_ids.append(0)
-        #       attention_mask.append(0)
-        #       token_type_ids.append(0)
-        #       special_tokens_mask.append(1)
-        #       entity_tokens_mask.append(0)
-
-        #   assert len(input_ids) == max_seq_length
-        #   assert len(attention_mask) == max_seq_length
-        #   assert len(token_type_ids) == max_seq_length
-        #   assert len(special_tokens_mask) == max_seq_length
-        #   assert len(entity_tokens_mask) == max_seq_length
-
           features["input_ids"].append(input_ids)
           features["attention_mask"].append(attention_mask)
           features["token_type_ids"].append(token_type_ids)
