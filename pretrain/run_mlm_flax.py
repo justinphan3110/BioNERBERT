@@ -235,8 +235,7 @@ class FlaxDataCollatorForNERLanguageModeling:
         special_tokens_mask = special_tokens_mask.astype("bool")
         entity_tokens_mask = entity_tokens_mask.astype("bool")
 
-        if entity_tokens_mask:
-            probability_matrix[entity_tokens_mask] = self.em_probability
+        probability_matrix[entity_tokens_mask] = self.em_probability
         probability_matrix[special_tokens_mask] = 0.0
         masked_indices = np.random.binomial(1, probability_matrix).astype("bool")
         labels[~masked_indices] = -100  # We only compute loss on masked tokens
