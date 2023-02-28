@@ -770,7 +770,7 @@ def main():
                 )
 
                 if log_to_wandb:
-                    wandb.log({"step": cur_step, "train_loss": train_metric['loss'], "learning_rate": train_metric['learning_rate']})
+                    wandb.log({"step": cur_step, "train_loss": np.array(train_metric['loss']), "learning_rate": np.array(train_metric['loss'])})
 
                 train_metrics = []
 
@@ -806,7 +806,7 @@ def main():
                     write_eval_metric(summary_writer, eval_metrics, cur_step)
 
                 if log_to_wandb:
-                    wandb.log({"step": cur_step, "eval_loss": eval_metrics['loss'], "Acc": eval_metrics['accuracy']})
+                    wandb.log({"step": cur_step, "eval_loss": np.array(train_metric['loss']), "Acc": np.array(train_metric['loss'])})
 
             if cur_step % training_args.save_steps == 0 and cur_step > 0:
                 # save checkpoint after each epoch and push checkpoint to the hub
