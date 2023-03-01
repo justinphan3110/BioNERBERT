@@ -4,5 +4,3 @@ seqeval
 transformers
 evaluate
 nltk
-jax==0.4.2
-jaxlib==0.4.2
