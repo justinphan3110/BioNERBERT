@@ -1,7 +1,4 @@
 datasets >= 1.8.0
-jax>=0.4.2
-jaxlib>=0.4.2
-flax>=0.4.2
 optax>=0.0.8
 seqeval
 transformers
