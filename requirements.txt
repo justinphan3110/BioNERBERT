@@ -4,3 +4,4 @@ seqeval
 transformers
 evaluate
 nltk
+wandb
