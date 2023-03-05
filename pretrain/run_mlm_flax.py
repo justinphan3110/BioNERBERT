@@ -322,7 +322,7 @@ def main():
                 "architecture": model_args.model_name_or_path,
                 "train_file": data_args.train_file,
                 "epochs": training_args.num_train_epochs,
-            }
+            },
             name=data_args.wandb_display_name
         )
 
