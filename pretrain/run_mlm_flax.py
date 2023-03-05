@@ -171,6 +171,7 @@ class DataTrainingArguments:
     )
 
     wandb_project: Optional[str] = field(default=None, metadata={"help": "Wandb Project"})
+    wandb_display_name: Optional[str] = field(default=None, metadata={"help": "Wandb Log's display_name"})
 
     def __post_init__(self):
         if self.train_file is None and self.validation_file is None:
@@ -322,6 +323,7 @@ def main():
                 "train_file": data_args.train_file,
                 "epochs": training_args.num_train_epochs,
             }
+            name=data_args.wandb_display_name
         )
 
     if (
